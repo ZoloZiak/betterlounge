@@ -7,6 +7,7 @@ const Bluebird = require("bluebird"),
 const db = services.db;
 
 const baseSql = `SELECT \`match\`.*, team1.name AS team1_name, team1.logo AS team1_logo,
+      IF (state="live", 0-UNIX_TIMESTAMP(start_at), UNIX_TIMESTAMP(start_at)) as o,
       team2.name AS team2_name, team2.logo AS team2_logo,
       (SELECT COALESCE(SUM(value), 0) from bet where match_id = match.id and team = 1) AS team1_value,
       (SELECT COALESCE(SUM(value), 0) from bet where match_id = match.id and team = 2) AS team2_value
@@ -31,12 +32,14 @@ function calculatePercentages(match) {
   return match;
 }
 
+const orderSql = `order by FIELD(state, 'live', 'open', 'finished'), o asc`;
+
 module.exports = function(app) {
 
   app.get("/", (req, res) => {
     return db.newConnection(conn => {
       return Bluebird.props({
-        tournament: conn.queryAsync(baseSql + " WHERE `match`.type = ?", ["tournament"])
+        tournament: conn.queryAsync(baseSql + " WHERE `match`.type = ? " + orderSql, ["tournament"])
         .each(result => {
           calculatePercentages(result);
         })

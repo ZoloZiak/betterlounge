@@ -43,9 +43,30 @@ app.use((req, res, next) => {
 // no cache in debug mode
 swig.setDefaults({ cache: false });
 
-// simple template formatter to give prices 2 decimal places
 swig.setFilter("currency", a => { return a.toFixed(2); });
 swig.setFilter("round", a => { return Math.round(a); });
+swig.setFilter("relativeTime", a => { 
+  let reverse = false;
+  let timeLeft = a.getTime() - Date.now();
+  if (timeLeft < 0) {
+    reverse = true;
+    timeLeft = Math.abs(timeLeft);
+  }
+  const secLeft = Math.floor(timeLeft / 1000);
+  const minLeft = Math.floor(secLeft / 60);
+  const hourLeft = Math.floor(minLeft / 60);
+  const dayLeft = Math.floor(hourLeft / 24);
+
+  if (minLeft < 1 && !reverse) {
+    return "Any time now";
+  } else if (minLeft < 120) {
+    return minLeft + " minute" + (minLeft > 1 ? "s" : "") + " " + (reverse ? "ago" : "from now");
+  } else if (hourLeft < 24) {
+    return hourLeft + " hour" + (hourLeft > 1 ? "s" : "")+ " " + (reverse ? "ago" : "from now");
+  } else {
+    return dayLeft + " day" + (dayLeft > 1 ? "s" : "") + " " + (reverse ? "ago" : "from now");
+  }
+});
 
 require("./routes/account")(app);
 require("./routes/matches")(app);

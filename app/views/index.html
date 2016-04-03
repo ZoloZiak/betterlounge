@@ -4,14 +4,16 @@
 
 <div class="row match-lists">
   <div class="col-md-6">
-    <h1>Tournaments</h1>
+    <h1>Matches</h1>
     {% for match in tournament %}
     <div class="well">
       <div class="container-fluid">
         <div class="col-md-2"><img src="{{ match.team1_logo }}" /></div>
         <div class="col-md-8">
           <a href="/match/{{ match.id }}">({{ match.team1_percent }}%) {{ match.team1_name }} vs {{ match.team2_name }} ({{ match.team2_percent }}%)<br />
-          {% if match.best_of %}Best of {{ match.best_of }}{% endif %}</a>
+          {% if match.best_of %}Best of {{ match.best_of }}{% endif %}<br />
+          {{ match.state }}<br />
+          {{ match.start_at|relativeTime }}</a>
         </div>
         <div class="col-md-2"><img src="{{ match.team2_logo }}" /></div>
       </div>

@@ -256,7 +256,7 @@ module.exports = app => {
     if (!req.session.user.trade_link) {
       res.session.flash = {
         type: "danger",
-        text: "There was an error creating your deposit. Please try again later"
+        text: "You need to specify a trade link before depositing."
       };
       return res.render("deposit");
     }
@@ -286,7 +286,67 @@ module.exports = app => {
   });
 
   app.post("/withdraw", (req, res) => {
+    
+    if (!req.session.user) {
+      return res.redirect("/login");
+    }
 
+    return Bluebird.resolve()
+    .then(() => {
+      if (!req.session.user.trade_link) {
+        throw new Error("You need to specify a trade link before withdrawing.");
+      }
+
+      if (!_.isArray(req.body.item_ids) || req.body.item_ids.length === 0) {
+        throw new Error("Unknown error");
+      }
+
+      return bots.getFloatItems();
+    })
+    .then(inventory => {
+
+      if (inventory.status !== 200)  {
+        throw new Error("There was a problem with your withdrawal.");
+      }
+      
+      const items = _.filter(inventory.response, item => {
+        return req.body.item_ids.indexOf(item.id) > -1;
+      });
+
+      if (items.length !== req.body.item_ids.length) {
+        throw new Error("Not all requested items are still available");
+      }
+
+      const tradeLink = req.session.user.trade_link;
+      const steamId = req.session.user.steam_id;
+      const withdrawTotal = _.sum(items, "guide_price");
+
+      if (withdrawTotal > req.session.user.credit) {
+        throw new Error("You don't have enough credit for that");
+      }
+
+      return bots.createWithdrawal(tradeLink, req.body.item_ids)
+      .then(response => {
+        if (response.status === 200) {
+          return db.newConnection(conn => {
+            return conn.queryAsync(
+              "UPDATE `user` SET credit = credit - ? WHERE steam_id = ?",
+              [withdrawTotal, steamId]
+            );
+          })
+          .then(() => {
+            res.redirect("/trades");
+          });
+        }
+        throw new Error("Unknown error when withdrawing items");
+      });
+    })
+    .catch(e => {
+      req.session.flash = {
+        type: "danger",
+        text: e.message
+      };
+      res.redirect("/account");
+    });
   });
-
 };

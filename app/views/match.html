@@ -6,7 +6,8 @@
 
     <h1 style="text-align: center">
       ({{ match.team1_percent }}%) {{ match.team1_name }} vs {{ match.team2_name }} ({{ match.team2_percent }}%)<br />
-      <small>{{ match.state }}</small>
+      <small>{{ match.state }}</small><br />
+      <small>{{ match.start_at|relativeTime }}</small>
     </h1>
 
     {% if flash %}
