@@ -32,7 +32,7 @@
         
         {% if bet %}
           Bet <input type="number" max="{{ user.credit + bet.value }}" min="{{ bet.value }}" value="{{ bet.value }}" name="bet" /> on {{ bet_team }}
-          
+          <input type="hidden" name="team" value="{{ bet.team }}" />
           <input type="submit" name="submit" value="Modify bet" />
         {% else %}
           Bet <input type="number" max="{{ user.credit }}" min="1" name="bet" /> on

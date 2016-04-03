@@ -9,6 +9,7 @@ const Bluebird = require("bluebird"),
 
 const db = services.db;
 const bots = services.bots;
+const validator = services.validator;
 
 function createRelyingParty() {
   return Bluebird.promisifyAll(
@@ -154,18 +155,12 @@ module.exports = app => {
       return res.redirect("/login");
     }
 
-    const steamId = req.session.user.steam_id;
-
-    if (req.body.trade_link) {
-
+    return validator.validate(req.body, "account")
+    .then(() => {
+      const steamId = req.session.user.steam_id;
       if (!validateTradeLink(steamId, req.body.trade_link)) {
-        req.session.flash = {
-          type: "danger",
-          text: "Please enter a valid trade link for your current account"
-        };
-        return res.redirect("/account");
+        throw new Error("Please enter a valid trade link for your account");
       }
-
       return db.newConnection(conn => {
         return conn.queryAsync(
           "UPDATE `user` SET trade_link = ? WHERE steam_id = ?",
@@ -177,11 +172,18 @@ module.exports = app => {
             type: "success",
             text: "Details updated"
           };
-          return res.redirect("/account");
         });
       });
-    }
-    res.redirect("/account");
+    })
+    .catch(e => {
+      req.session.flash = {
+        type: "danger",
+        message: e.message
+      };
+    })
+    .then(() => {
+      return res.redirect("/account");
+    });
   });
 
   app.get("/trades", (req, res) => {
@@ -252,37 +254,28 @@ module.exports = app => {
     if (!req.session.user) {
       return res.redirect("/login");
     }
-    
-    if (!req.session.user.trade_link) {
-      res.session.flash = {
-        type: "danger",
-        text: "You need to specify a trade link before depositing."
-      };
-      return res.render("deposit");
-    }
 
-    if (!req.body.asset_ids || req.body.asset_ids.length === 0) {
-      res.session.flash = {
-        type: "danger",
-        text: "No items selected"
-      };
-      return res.render("deposit");
-    }
-
-    const tradeLink = req.session.user.trade_link;
-
-    return bots.createDeposit(tradeLink, req.body.asset_ids)
+    return validator.validate(req.body, "deposit")
+    .then(() => {
+      if (!req.session.user.trade_link) {
+        throw new Error("You need to specify a trade link before depositing.");
+      }
+      const tradeLink = req.session.user.trade_link;
+      return bots.createDeposit(tradeLink, req.body.asset_ids)
+      .catch(() => {
+        throw new Error("There was an error creating your deposit. Please try again later");
+      });
+    })
     .then(() => {
       res.redirect("/trades");
     })
-    .catch(() => {
+    .catch(e => {
       res.session.flash = {
         type: "danger",
-        text: "There was an error creating your deposit. Please try again later"
+        text: e.message
       };
       res.render("deposit");
     });
-
   });
 
   app.post("/withdraw", (req, res) => {
@@ -291,7 +284,7 @@ module.exports = app => {
       return res.redirect("/login");
     }
 
-    return Bluebird.resolve()
+    return validator.validate(req.body, "withdraw")
     .then(() => {
       if (!req.session.user.trade_link) {
         throw new Error("You need to specify a trade link before withdrawing.");

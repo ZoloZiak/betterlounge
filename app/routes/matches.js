@@ -5,6 +5,7 @@ const Bluebird = require("bluebird"),
   services = require("../services");
 
 const db = services.db;
+const validator = services.validator;
 
 const baseSql = `SELECT \`match\`.*, team1.name AS team1_name, team1.logo AS team1_logo,
       IF (state="live", 0-UNIX_TIMESTAMP(start_at), UNIX_TIMESTAMP(start_at)) as o,
@@ -85,88 +86,86 @@ module.exports = function(app) {
       return res.redirect("/login");
     }
 
-    const steamId = req.session.user.steam_id;
     const matchId = req.params.id;
+    const steamId = req.session.user.steam_id;
 
-    db.newConnection(conn => {
-      return conn.queryAsync(
-        "SELECT * FROM `match` WHERE id = ? LIMIT 1",
-        [matchId]
-      )
-      .then(matches => {
-        return _.first(matches);
-      })
-      .then(match => {
-        if (!match) {
-          throw new Error("Unable to find match");
-        }
-        if (match.state !== "open") {
-          throw new Error("Match is not open");
-        }
-
-
-        const sql = `SELECT user.steam_id, user.credit, bet.* FROM user LEFT JOIN bet ON bet.steam_id = user.steam_id AND bet.match_id = ?
-               WHERE user.steam_id = ? LIMIT 1`;
-
-        return conn.queryAsync(
-          sql,
-          [matchId, steamId]
-        )
-        .then(results => {
-          return _.first(results);
-        })
-        .then(result => {
-          // user has already placed a bet
-          if (result.match_id) {
-            const difference = parseFloat((req.body.bet - result.value).toFixed(2));
-            if (difference <= 0) {
-              throw new Error("You can't bet lower than previous bet");
-            }
-            if (difference > result.credit) {
-              throw new Error("You don't have enough credits");
-            }
-            return conn.queryAsync(
-              "UPDATE bet SET value = value + ? WHERE steam_id = ? AND match_id = ?",
-              [difference, steamId, matchId]
-            )
-            .then(() => {
-              return conn.queryAsync(
-                "UPDATE user SET credit = credit - ? where steam_id = ?",
-                [difference, steamId]
-              );
-            })
-            .then(() => {
-              req.session.user.credit -= difference;
-              req.session.flash = {type:"success", text: "Bet updated"};
-            });
-          } else {
-            if (req.body.bet > result.credit) {
-              throw new Error("You don't have enough credits");
-            }
-            return conn.queryAsync(
-              "INSERT INTO bet (steam_id, match_id, team, value) values (?, ?, ?, ?)",
-              [steamId, matchId, req.body.team, req.body.bet]
-            )
-            .then(() => {
-              return conn.queryAsync(
-                "UPDATE user SET credit = credit - ? where steam_id = ?",
-                [req.body.bet, steamId]
-              );
-            })
-            .then(() => {
-              req.session.user.credit -= req.body.bet;
-              req.session.flash = {type:"success", text: "Bet placed"};
-            });
-          }
-        });
-      });
-    }, true)
+    return validator.validate(req.body, "bet")
     .then(() => {
-      res.redirect("/match/" + matchId);
+      return db.newConnection(conn => {
+        return conn.queryAsync(
+          "SELECT * FROM `match` WHERE id = ? LIMIT 1",
+          [matchId]
+        )
+        .then(matches => {
+          return _.first(matches);
+        })
+        .then(match => {
+
+          if (!match) {
+            throw new Error("Unable to find match");
+          }
+          if (match.state !== "open") {
+            throw new Error("Match is not open");
+          }
+          const sql = `SELECT user.steam_id, user.credit, bet.* FROM user LEFT JOIN bet ON bet.steam_id = user.steam_id AND bet.match_id = ?
+                 WHERE user.steam_id = ? LIMIT 1`;
+
+          return conn.queryAsync(sql, [matchId, steamId])
+          .then(results => {
+            return _.first(results);
+          })
+          .then(result => {
+            // user has already placed a bet
+            if (result.match_id) {
+              const difference = parseFloat((req.body.bet - result.value).toFixed(2));
+              if (difference <= 0) {
+                throw new Error("You can't bet lower than previous bet");
+              }
+              if (difference > result.credit) {
+                throw new Error("You don't have enough credits");
+              }
+              return conn.queryAsync(
+                "UPDATE bet SET value = value + ? WHERE steam_id = ? AND match_id = ?",
+                [difference, steamId, matchId]
+              )
+              .then(() => {
+                return conn.queryAsync(
+                  "UPDATE user SET credit = credit - ? where steam_id = ?",
+                  [difference, steamId]
+                );
+              })
+              .then(() => {
+                req.session.user.credit -= difference;
+                req.session.flash = {type:"success", text: "Bet updated"};
+              });
+            } else {
+              if (req.body.bet > result.credit) {
+                throw new Error("You don't have enough credits");
+              }
+              return conn.queryAsync(
+                "INSERT INTO bet (steam_id, match_id, team, value) values (?, ?, ?, ?)",
+                [steamId, matchId, req.body.team, req.body.bet]
+              )
+              .then(() => {
+                return conn.queryAsync(
+                  "UPDATE user SET credit = credit - ? where steam_id = ?",
+                  [req.body.bet, steamId]
+                );
+              })
+              .then(() => {
+                req.session.user.credit -= req.body.bet;
+                req.session.flash = {type:"success", text: "Bet placed"};
+              });
+            }
+          });
+        });
+      }, true);
     })
     .catch(e => {
       req.session.flash = {type:"danger", text: e.message};
+    })
+    .then(() => {
       res.redirect("/match/" + matchId);
-    });
+    });    
   });
 };

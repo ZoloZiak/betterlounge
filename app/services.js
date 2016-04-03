@@ -11,6 +11,7 @@ const pool = mysql.createPool(config.mysql);
 
 module.exports = {
   bots: require("./bots"),
+  validator: require("./validator"),
   db: {
     newConnection: (queries, transaction, retries) => {
       retries = retries || 0;
