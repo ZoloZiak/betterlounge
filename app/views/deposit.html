@@ -15,13 +15,16 @@
     <form action="/deposit" method="post">
     <ul class="item-list" id="float-items">
     {% for item in inventory.response %}
-      <li data-value="{{ item.guide_price }}" data-id="{{ item.id }}">
-        <img src="https://steamcommunity-a.akamaihd.net/economy/image/{{ item.icon }}" width="100" height="80" /><br />
-        {{ item.name }} - {{ item.guide_price|currency }}
+      <li>
+        <input type="checkbox" name="asset_ids" value="{{ item.asset_id }}" id="item_{{ item.asset_id }}" />
+        <label for="item_{{ item.asset_id }}">
+          <img src="https://steamcommunity-a.akamaihd.net/economy/image/{{ item.icon }}" width="100" height="80" /><br />
+          {{ item.name }} - {{ item.guide_price|currency }}
+        </label>
       </li>
     {% endfor %}
     </ul>
-    <p class="alert alert-warning"><b>Warning:</b> When you deposit items they're converted to credits. You may not be able to retrieve your original items.</p>
+    <p class="alert alert-warning"><b>Warning:</b> When you deposit items they're converted into credits. You may not be able to retrieve your original items.</p>
     <input type="submit" name="submit" value="submit" class="btn" />
     </form>
   {% endif %}

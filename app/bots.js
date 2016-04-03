@@ -2,6 +2,7 @@
 
 const SteamBots = require("steambots-node-sdk"),
       config = require("./config"),
+      _ = require("lodash"),
       Bluebird = require("bluebird"),
       sdk = new SteamBots(config.steambots.key),
       redis = require("redis");
@@ -16,12 +17,19 @@ module.exports = {
   },
 
   createWithdrawal: (tradeLink, itemIds) => {
-    redisClient.del("float"); // clear the float cache
-    return sdk.createWithdrawal(tradeLink, itemIds);
+    return sdk.createWithdrawal(tradeLink, itemIds)
+    .then(res => {
+      redisClient.del("float");
+      return res;
+    });
   },
 
   createDeposit: (tradeLink, assetIds) => {
-    return sdk.createDeposit(tradeLink, assetIds);
+    return sdk.createDeposit(tradeLink, assetIds)
+    .then(res => {
+      redisClient.del("float");
+      return res;
+    });
   },
 
   getFloatItems: () => {
@@ -42,9 +50,36 @@ module.exports = {
   },
 
   getUsersTrades: steamId => {
-    return sdk.getTrades({
-      user_steam_id: steamId,
-      limit: 20
+    return Bluebird.all([
+      sdk.getTrades({
+        user_steam_id: steamId,
+        limit: 30,
+        sort: "desc"
+      }),
+      sdk.getTrades({
+        user_steam_id: steamId,
+        type: "withdrawal",
+        state: "cancelled",
+        sort: "desc"
+      })
+    ])
+    .then(responses => {
+      let trades = [];
+      _.each(responses, res => {
+        _.each(res.response, trade => {
+          if (!_.find(trades, {"id": trade.id})) {
+            trades.push(trade);
+          }
+        });
+      });
+
+      trades.sort((a, b) => {
+        if (a.state == "cancelled" && a.type == "withdrawal") {
+          return -1;
+        }
+        return b.id - a.id;
+      });
+      return trades;
     });
   }
 };

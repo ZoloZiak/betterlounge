@@ -3,11 +3,37 @@
 {% block content %}
 <div class="row">
   <div class="col-md-12">
-  
-  <h1>Trades</h1>
-
-  {% if error %}
-    <p>{{ error }}</p>
-  {% endif %}
+    <h1>Trades</h1>
+  </div>
 </div>
+
+  {% for trade in trades %}
+  <div class="row trade trade-{{ trade.state }}">
+    <div class="col-md-3">
+      <strong>{{ trade.type }}</strong><br />
+      <strong>Confirmation:</strong> {{ trade.confirmation_code }}<br />
+
+      <strong>Offer ID:</strong> 
+      {% if trade.offer_id %}
+        <a href="https://steamcommunity.com/tradeoffer/{{ trade.offer_id }}/" target="_blank">{{ trade.offer_id }}</a>
+      {% else %}
+        <a href="http://steamcommunity.com/id/mikeemoo101/tradeoffers/" target="_blank">Unknown</a>
+      {% endif %}<br />
+      <strong>Status:</strong> {{ trade.state }}<br />
+      {% if trade.type == "withdrawal" and trade.state != "complete" %}
+      <a href="/trades/{{ trade.id }}/resend">Resend this offer</a>
+      {% endif %}
+    </div>
+    <div class="col-md-8">
+      <ul class="item-list">
+      {% for item in trade.items %}
+        <li>
+          <img src="https://steamcommunity-a.akamaihd.net/economy/image/{{ item.icon }}" width="100" height="80" /><br />
+          {{ item.name }} - {{ item.guide_price|currency }}
+        </li>
+      {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endfor %}
 {% endblock %}

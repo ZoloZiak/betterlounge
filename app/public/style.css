@@ -1,0 +1,80 @@
+body {
+  background: #eee;
+}
+#header {
+  background: #333;
+  color: #fff;
+}
+#header ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+#logo {
+  font-size: 1.6em;
+  padding-top: 15px;
+  color: #ff8a00;
+}
+#header a {
+  display: block;
+  padding: 10px 0 10px;
+  color: #ff8a00;
+  text-align: center;
+  text-decoration: none;
+}
+#header a:hover {
+  color: #fff;
+}
+.match-lists .well {
+  text-align: center;
+}
+.match-lists .well img {
+  width: 40px;
+  height: 40px;
+}
+.big-icon {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 40px;
+  text-align: center;
+}
+.item-list {
+  overflow: hidden;
+  zoom: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.item-list li {
+  float: left;
+  width: 120px;
+  height: 120px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  margin: 5px;
+  padding: 0;
+  list-style: none;
+  font-size: 0.7em;
+  text-align: center;
+}
+.item-list input[type=checkbox] {
+  display:none;
+}
+.item-list input[type=checkbox] + label {
+  cursor: pointer;
+  font-weight: normal;
+  height: 100%;
+  width: 100%;
+  display:inline-block;
+  padding: 0 0 0 0px;
+}
+.item-list input[type=checkbox]:checked + label {
+  background: #0080FF;
+}
+.trade {
+  border-bottom: 1px solid #ccc;
+  padding:10px 0;
+}
+.trade-pending, .trade-dispatched {
+  background-color: #E0CEB9;
+}

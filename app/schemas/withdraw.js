@@ -3,11 +3,8 @@
 module.exports = {
   "id": "CreateWithdrawal",
   "type": "object",
-  "required": ["trade_link", "item_ids"],
+  "required": ["item_ids"],
   "properties": {
-    "trade_link": {
-      "type": "string"
-    },
     "asset_ids": {
       "type": "array",
       "minItems": 1,

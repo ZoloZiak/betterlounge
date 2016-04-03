@@ -64,27 +64,23 @@ module.exports = app => {
     createRelyingParty(req)
     .verifyAssertionAsync(req)
     .then(result => {
-      
       if (!result.authenticated) {
         return res.redirect("/");
       }
-
-      var IDENTIFIER_REGEX = /^https?:\/\/steamcommunity\.com\/openid\/id\/([0-9]+)$/;
-      var matches = IDENTIFIER_REGEX.exec(result.claimedIdentifier);
+      const IDENTIFIER_REGEX = /^https?:\/\/steamcommunity\.com\/openid\/id\/([0-9]+)$/;
+      const matches = IDENTIFIER_REGEX.exec(result.claimedIdentifier);
 
       if (matches === null) {
         return res.redirect("/");
       }
 
       const steamId = matches[1];
-
       return db.newConnection(conn => {
         return conn.queryAsync(
           "SELECT * FROM `user` where steam_id = ? LIMIT 1",
           [steamId]
         )
         .then(results => {
-          // if you're interested, you can grab additional steam data here
           if (results.length === 0) {
             const now = new Date();
             return conn.queryAsync(
@@ -149,6 +145,9 @@ module.exports = app => {
     });
   });
 
+  /***********************************************************
+  * Simple post for updating a users account details (their trade link)
+  ***********************************************************/
   app.post("/account", (req, res) => {
 
     if (!req.session.user) {
@@ -187,13 +186,10 @@ module.exports = app => {
   });
 
   app.get("/trades", (req, res) => {
-    
     if (!req.session.user) {
       return res.redirect("/login");
     }
-
     const steamId = req.session.user.steam_id;
-
     bots.getUsersTrades(steamId)
     .then(trades => {
       res.render("trades", {trades: trades});
@@ -206,21 +202,21 @@ module.exports = app => {
   * inventory, filter out untradable items, then render it all
   ***********************************************************/
   app.get("/deposit", (req, res) => {
-    
+    // if the user isnt logged in, send them to login
     if (!req.session.user) {
       return res.redirect("/login");
     }
 
+    // load the users inventory
     bots.loadInventory(req.session.user.steam_id)
     .then(inventory => {
-
       if (inventory.status === 200) {
-
         // remove any non-tradable items and items without prices
         inventory.response = _.filter(inventory.response, item => {
           return item.tradable && item.guide_price && item.guide_price < 400;
         });
 
+        // sort them from most valuable to least valuable
         inventory.response = _.orderBy(inventory.response, ["guide_price"], ["desc"]);
       }
       
@@ -251,15 +247,34 @@ module.exports = app => {
   ***********************************************************/
   app.post("/deposit", (req, res) => {
 
+    // if they're not logged in, send them to login
     if (!req.session.user) {
       return res.redirect("/login");
     }
 
+    // dirty hack to make sure asset ids are submitted as an array
+    if (_.isString(req.body.asset_ids)) {
+      req.body.asset_ids = [req.body.asset_ids];
+    }
+
+    // validate the request body
     return validator.validate(req.body, "deposit")
     .then(() => {
+
+      //.the html will submit them as strings. lets ensure they're actual numeric strings
+      for (let i = 0; i < req.body.asset_ids.length; i++) {
+        let assetId = req.body.asset_ids[i];
+        if (isNaN(parseFloat(assetId)) || !isFinite(assetId)) {
+          throw new Error("Unknown error");
+        }
+      }
+
+      // make sure the user has a trade link set up
       if (!req.session.user.trade_link) {
         throw new Error("You need to specify a trade link before depositing.");
       }
+
+      // ok we're good to go. submit the request to steambots
       const tradeLink = req.session.user.trade_link;
       return bots.createDeposit(tradeLink, req.body.asset_ids)
       .catch(() => {
@@ -267,59 +282,90 @@ module.exports = app => {
       });
     })
     .then(() => {
+      // all good, lets take them to the trades page
       res.redirect("/trades");
     })
     .catch(e => {
-      res.session.flash = {
+      // something went tits up
+      req.session.flash = {
         type: "danger",
         text: e.message
       };
-      res.render("deposit");
+      return res.redirect("/deposit");
     });
   });
 
+  /***********************************************************
+  * When the user posts to /withdraw from the account page
+  * we need to ensure they have enough credit for what they're withdrawing
+  * then make the request to steambots, then update the database
+  ***********************************************************/
   app.post("/withdraw", (req, res) => {
-    
+
+    // user isnt logged in, send them to login
     if (!req.session.user) {
       return res.redirect("/login");
     }
 
+    // dirty hack to ensure they come in as an array
+    if (_.isString(req.body.item_ids)) {
+      req.body.item_ids = [req.body.item_ids];
+    }
+
+    // validate the request
     return validator.validate(req.body, "withdraw")
     .then(() => {
+
+      // double check they have a trade link
       if (!req.session.user.trade_link) {
         throw new Error("You need to specify a trade link before withdrawing.");
       }
 
-      if (!_.isArray(req.body.item_ids) || req.body.item_ids.length === 0) {
-        throw new Error("Unknown error");
+      // make sure all items are numeric
+      for (let i = 0; i < req.body.item_ids.length; i++) {
+        let itemId = req.body.item_ids[i];
+        if (isNaN(parseFloat(itemId)) || !isFinite(itemId)) {
+          throw new Error("Unknown error");
+        }
       }
 
+      // grab all of the items from the bots that arent part of an outstanding trade
       return bots.getFloatItems();
     })
     .then(inventory => {
 
+      // uh oh, this shouldnt happen
       if (inventory.status !== 200)  {
         throw new Error("There was a problem with your withdrawal.");
       }
       
+      // grab the actual item objects for the list of supplied ids
       const items = _.filter(inventory.response, item => {
-        return req.body.item_ids.indexOf(item.id) > -1;
+        return req.body.item_ids.indexOf("" + item.id) > -1;
       });
 
+      // if some items have gone missing another user probably has them, so 
+      // lets throw an error
       if (items.length !== req.body.item_ids.length) {
         throw new Error("Not all requested items are still available");
       }
 
       const tradeLink = req.session.user.trade_link;
       const steamId = req.session.user.steam_id;
-      const withdrawTotal = _.sum(items, "guide_price");
 
+      // grab the sum of all the prices (so we can deduct credits)
+      const withdrawTotal = _.sumBy(items, "guide_price");
+
+      // ensure they have enough credits
       if (withdrawTotal > req.session.user.credit) {
         throw new Error("You don't have enough credit for that");
       }
 
-      return bots.createWithdrawal(tradeLink, req.body.item_ids)
+      // send a withdrawal request over to steambots
+      return bots.createWithdrawal(tradeLink, _.map(items, "id"))
       .then(response => {
+
+        // if everything is peachy, lets deduct the credits from the users profile
         if (response.status === 200) {
           return db.newConnection(conn => {
             return conn.queryAsync(
@@ -328,13 +374,16 @@ module.exports = app => {
             );
           })
           .then(() => {
+            // finally lets send them to trades so they can see the trade
             res.redirect("/trades");
           });
         }
+        // status from steambots was not 200, so something isnt good.
         throw new Error("Unknown error when withdrawing items");
       });
     })
     .catch(e => {
+      // aww shit
       req.session.flash = {
         type: "danger",
         text: e.message

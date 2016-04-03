@@ -30,19 +30,23 @@
 
   <div class="col-md-12">
     <h2>Cash out</h2>
-    <div class="well">
+    <form method="post" action="/withdraw" class="well">
       <p>You have {{ user.credit }} credit to spend</p>
       {% if float.status == "200" %}
         <ul class="item-list" id="float-items">
         {% for item in float.response %}
-          <li data-value="{{ item.guide_price }}" data-id="{{ item.id }}">
+        <li>
+          <input type="checkbox" name="item_ids" value="{{ item.id }}" id="item_{{ item.id }}" />
+          <label for="item_{{ item.id }}">
             <img src="https://steamcommunity-a.akamaihd.net/economy/image/{{ item.icon }}" width="100" height="80" /><br />
             {{ item.name }} - {{ item.guide_price|currency }}
-          </li>
+          </label>
+        </li>
         {% endfor %}
         </ul>
+        <input type="submit" name="submit" value="Take selected items" class="btn" />
       {% endif %}
-    </div>
+    </form>
   </div>
 </div>
 {% endblock %}
