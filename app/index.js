@@ -4,7 +4,7 @@ const express = require("express"),
     session = require("express-session"),
     swig = require("swig"),
     bodyParser = require("body-parser"),
-    config = require("./config"),
+    config = require("./lib/config"),
     app = express(),
     server = require("http").Server(app);
 

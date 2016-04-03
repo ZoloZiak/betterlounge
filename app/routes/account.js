@@ -2,8 +2,8 @@
 
 const Bluebird = require("bluebird"),
   openid = require("openid"),
-  config = require("../config"),
-  services = require("../services"),
+  config = require("../lib/config"),
+  services = require("../lib/services"),
   _ = require("lodash"),
   Long = require("long");
 

@@ -2,7 +2,7 @@
 
 const Bluebird = require("bluebird"),
   _ = require("lodash"),
-  services = require("../services");
+  services = require("../lib/services");
 
 const db = services.db;
 const validator = services.validator;
