@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-12">
+  
+  <h1>Deposit</h1>
+
+  {% if flash %}
+    <p class="alert alert-{{ flash.type }}">{{ flash.text }}</p>
+  {% endif %}
+  {% if !user.trade_link %}
+    <p>Please add your trade link before depositing on the <a href="/account">account</a> page.</p>
+  {% else %}
+    <form action="/deposit" method="post">
+    <ul class="item-list" id="float-items">
+    {% for item in inventory.response %}
+      <li data-value="{{ item.guide_price }}" data-id="{{ item.id }}">
+        <img src="https://steamcommunity-a.akamaihd.net/economy/image/{{ item.icon }}" width="100" height="80" /><br />
+        {{ item.name }} - {{ item.guide_price|currency }}
+      </li>
+    {% endfor %}
+    </ul>
+    <p class="alert alert-warning"><b>Warning:</b> When you deposit items they're converted to credits. You may not be able to retrieve your original items.</p>
+    <input type="submit" name="submit" value="submit" class="btn" />
+    </form>
+  {% endif %}
+  </div>
+</div>
+{% endblock %}

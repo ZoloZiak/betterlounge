@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-12">
+    <h1>Account</h1>
+    {% if flash %}
+      <p class="alert alert-{{ flash.type }}">{{ flash.text }}</p>
+    {% endif %}
+    <form action="/account" method="post" class="form-horizontal well">
+      <div class="form-group">
+        <label class="col-sm-1 control-label">Credit</label>
+        <div class="col-sm-8">
+          {{ user.credit }}
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="col-sm-1 control-label">Trade link</label>
+        <div class="col-sm-8">
+          <input type="text" name="trade_link" class="form-control" value="{{ user.trade_link }}" />
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="col-sm-offset-1 col-sm-8">
+          <input type="submit" name="submit" value="Update" class="btn" />
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="col-md-12">
+    <h2>Cash out</h2>
+    <div class="well">
+      <p>You have {{ user.credit }} credit to spend</p>
+      {% if float.status == "200" %}
+        <ul class="item-list" id="float-items">
+        {% for item in float.response %}
+          <li data-value="{{ item.guide_price }}" data-id="{{ item.id }}">
+            <img src="https://steamcommunity-a.akamaihd.net/economy/image/{{ item.icon }}" width="100" height="80" /><br />
+            {{ item.name }} - {{ item.guide_price|currency }}
+          </li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

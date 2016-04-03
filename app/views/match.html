@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-12">
+
+    <h1 style="text-align: center">
+      ({{ match.team1_percent }}%) {{ match.team1_name }} vs {{ match.team2_name }} ({{ match.team2_percent }}%)<br />
+      <small>{{ match.state }}</small>
+    </h1>
+
+    {% if flash %}
+      <p class="alert alert-{{ flash.type }}">{{ flash.text }}</p>
+    {% endif %}
+
+    {% if bet %}
+
+      {% if bet.team == 1 %}
+        {% set bet_team = match.team1_name %}
+      {% else %}
+        {% set bet_team = match.team2_name %}
+      {% endif %}
+
+      <p>You've bet {{ bet.value|currency }} on {{ bet_team }}</p>
+    {% endif %}
+
+    {% if match.state == "open" %}
+    <form class="well" action="/match/{{ match.id }}" method="post">
+      <p class="alert alert-warning"><b>Warning:</b> To reduce skewing you can add extra credits to an existing bet, but you can not reduce your bet or change teams.</p>
+      {% if user %}
+        
+        {% if bet %}
+          Bet <input type="number" max="{{ user.credit + bet.value }}" min="{{ bet.value }}" value="{{ bet.value }}" name="bet" /> on {{ bet_team }}
+          
+          <input type="submit" name="submit" value="Modify bet" />
+        {% else %}
+          Bet <input type="number" max="{{ user.credit }}" min="1" name="bet" /> on
+          <select name="team">
+            <option value="1">{{ match.team1_name }}</option>
+            <option value="2">{{ match.team2_name }}</option>
+          </select>
+          <input type="submit" name="submit" value="Place bet" />
+        {% endif %}
+
+      {% else %}
+        <p>Please <a href="/login">log in</a> to place a bet</p>
+      {% endif %}
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
