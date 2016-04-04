@@ -1,0 +1,14 @@
+[
+  {
+    "name": "site",
+    "script": "/vagrant/app/index.js",
+    "log_file": "/vagrant/log/site.log",
+    "exec_mode": "fork"
+  },
+  {
+    "name": "bot-stream",
+    "script": "/vagrant/app/bot-stream.js",
+    "log_file": "/vagrant/log/bot-stream.log",
+    "exec_mode": "fork",
+  }
+]

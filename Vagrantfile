@@ -45,11 +45,12 @@ sudo ln -sf /home/vagrant/node-v4.2.4-linux-x64/lib/node_modules/npm/bin/npm-cli
 sudo npm install -g npm@3.8.3
 
 sudo chown -R vagrant:vagrant /home/vagrant/.npm
+sudo npm install pm2 -g --unsafe-perm
 
 pushd /vagrant
   npm install --no-bin-links
-  sudo mkdir /log
-  sudo chmod 0777 /log
+  sudo mkdir log
+  sudo chmod 0777 log
   mysql -uroot -pbetterlounge -e 'CREATE DATABASE betterlounge;'
   mysql -uroot -pbetterlounge betterlounge < /vagrant/schema.sql
 popd
